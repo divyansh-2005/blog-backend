@@ -1,10 +1,11 @@
 const Blog = require('../models/Blog');
 const cloudinary = require('../config/cloudinary');
 const stream = require('stream');
-const mongoose = require('mongoose');
 
 exports.createBlogPost = async (req, res) => {
+    console.log(req.body); // Logs the incoming body
     const { title, description, location } = req.body;
+    
     const userId = req.user.id; // Assuming you have authentication middleware
 
     try {
@@ -12,48 +13,49 @@ exports.createBlogPost = async (req, res) => {
         if (!req.file) {
             return res.status(400).json({ message: 'No file uploaded' });
         }
+        
+        // Create a stream to pass the buffer to Cloudinary
+        const bufferStream = new stream.PassThrough();
+        bufferStream.end(req.file.buffer);
 
-        // Create a promise to handle the Cloudinary upload
-        const uploadImageToCloudinary = () => {
-            return new Promise((resolve, reject) => {
-                const stream = cloudinary.uploader.upload_stream(
-                    { 
-                        resource_type: 'image', 
-                        folder: 'uploads', // Optional: Add folder for better organization
-                    },
-                    (error, result) => {
-                        if (error) {
-                            reject(error);
-                        } else {
-                            resolve(result);
-                        }
+        // Upload the image using Promises
+        const result = await new Promise((resolve, reject) => {
+            bufferStream.pipe(
+                cloudinary.uploader.upload_stream({ resource_type: 'image' }, (error, result) => {
+                    if (error) {
+                        console.error('Error uploading to Cloudinary:', error);
+                        return reject(new Error('Error uploading image'));
                     }
-                );
-                stream.end(req.file.buffer); // Send the file buffer to Cloudinary
-            });
-        };
+                    resolve(result);
+                })
+            );
+        });
+        
+         // Parse the location string to an object if it's a string
+        let parsedLocation;
+        try {
+             parsedLocation = typeof location === 'string' ? JSON.parse(location) : location;
+        } catch (error) {
+             return res.status(400).json({ message: 'Invalid location format' });
+        }
 
-        // Wait for the image to be uploaded and get the result
-        const result = await uploadImageToCloudinary();
-
-        // Create a new blog post using the Cloudinary image URL
+        // Create a new blog post without imageUrl for now
         const newBlogPost = await Blog.create({
             title,
             description,
-            imageUrl: result.secure_url, // Use the secure URL from Cloudinary
-            location: JSON.parse(location), // Parse location if it's sent as a JSON string
+            imageUrl: result.secure_url, // Set imageUrl to null or a placeholder since it's now optional
+            location: parsedLocation, // No need to parse; location is already an object
             user: userId,
         });
 
         // Send the response
-        res.status(201).json(newBlogPost);
+        return res.status(201).json(newBlogPost); // Respond with the new blog post
 
     } catch (error) {
-        console.error('Error uploading to Cloudinary:', error);
-        res.status(500).json({ message: 'Server error' });
+        console.error('Error creating blog post:', error);
+        return res.status(500).json({ message: 'Server error' }); // Ensure the function ends here too
     }
 };
-
 
 // Get All Blog Posts
 exports.getAllBlogPosts = async (req, res) => {
@@ -84,6 +86,7 @@ exports.getBlogPostById = async (req, res) => {
 
 // Update Blog Post
 exports.updateBlogPost = async (req, res) => {
+    console.log(req.body);
     const { title, description, location } = req.body;
     const userId = req.user.id; // Get user ID from token
     const blogId = req.params.id; // Blog ID from URL params
