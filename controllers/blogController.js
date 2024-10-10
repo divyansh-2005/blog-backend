@@ -13,7 +13,7 @@ exports.createBlogPost = async (req, res) => {
         if (!req.file) {
             return res.status(400).json({ message: 'No file uploaded' });
         }
-        
+
         // Create a stream to pass the buffer to Cloudinary
         const bufferStream = new stream.PassThrough();
         bufferStream.end(req.file.buffer);
@@ -60,7 +60,7 @@ exports.createBlogPost = async (req, res) => {
 // Get All Blog Posts
 exports.getAllBlogPosts = async (req, res) => {
     try {
-        const blogPosts = await Blog.find().populate('user', 'username'); // Populate user field
+        const blogPosts = await Blog.find(); // Populate user field
         res.status(200).json(blogPosts);
     } catch (error) {
         console.error(error);
