@@ -1,3 +1,4 @@
+// routes/blog.js
 const express = require('express');
 const multer = require('multer'); // For handling file uploads
 const { createBlogPost, getAllBlogPosts, updateBlogPost, deleteBlogPost, getBlogPostById, getBlogPostsByUser, getUserBlogPosts } = require('../controllers/blogController');

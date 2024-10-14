@@ -1,3 +1,5 @@
+// controller/blogController.js
+
 const Blog = require('../models/Blog');
 const cloudinary = require('../config/cloudinary');
 const stream = require('stream');
